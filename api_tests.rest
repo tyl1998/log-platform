@@ -1,0 +1,350 @@
+# 日志平台 API 测试文件
+# 使用 VSCode REST Client 插件或其他 HTTP 客户端工具发送请求
+
+# @baseUrl = http://127.0.0.1:8098
+@baseUrl = http://127.0.0.1:8098
+
+### =================
+### 基础健康检查
+### =================
+
+### 健康检查
+GET {{baseUrl}}/health
+
+### 就绪检查
+GET {{baseUrl}}/ready
+
+### =================
+### 智能体日志 API
+### =================
+
+### 2. 新增单个智能体日志
+POST {{baseUrl}}/api/agent/log/add
+Content-Type: application/json
+
+{
+  "request_id": "req_001",
+  "message_id": "msg_001",
+  "conversation_id": "session_001",
+  "agent_id": "agent_001",
+  "user_uid": "user_123",
+  "tenant_id": "1",
+  "space_id": "space_001",
+  "user_input": "请帮我分析一下这个数据",
+  "output": "根据您提供的数据，我分析出以下结论...",
+  "request_start_time": "2024-01-15T10:30:00Z",
+  "request_end_time": "2024-01-15T10:30:05Z",
+  "status": "success",
+  "error_message": null,
+  "metadata": {
+    "model": "gpt-4",
+    "temperature": 0.7,
+    "max_tokens": 1000
+  },
+  "user_id": 1,
+  "user_name": "张三"
+}
+
+
+### 删除索引,索引名称: agent_logs
+DELETE {{baseUrl}}/api/agent/log/delete/agent_logs
+
+### 3. 批量新增智能体日志
+POST {{baseUrl}}/api/agent/log/batch
+Content-Type: application/json
+
+[
+  {
+    "request_id": "req_002",
+    "message_id": "msg_002",
+    "conversation_id": "session_001", 
+    "agent_id": "agent_001",
+    "user_uid": "user_123",
+    "tenant_id": "1",
+    "space_id": "space_001",
+    "user_input": "低调调调",
+    "output": "机器学习是人工智能的一个分支...",
+    "request_start_time": "2024-01-15T10:31:00Z",
+    "request_end_time": "2024-01-15T10:31:03Z",
+    "status": "success",
+    "error_message": null,
+    "metadata": {
+      "model": "gpt-3.5-turbo",
+      "temperature": 0.5
+    },
+    "user_id": 2,
+    "user_name": "李四"
+  },
+  {
+    "request_id": "req_003",
+    "message_id": "msg_003",
+    "conversation_id": "session_002",
+    "user_uid": "user_456", 
+    "tenant_id": "tenant_001",
+    "space_id": "space_002",
+    "user_input": "计算 2+2 等于多少？",
+    "output": "2+2 等于 4",
+    "request_start_time": "2024-01-15T10:32:00Z",
+    "request_end_time": "2024-01-15T10:32:01Z",
+    "status": "success",
+    "error_message": null,
+    "metadata": {
+      "model": "gpt-4",
+      "temperature": 0.1
+    },
+    "user_id": 3,
+    "user_name": "王五"
+  }
+]
+
+### 4. 搜索智能体日志 - 基础查询
+POST {{baseUrl}}/api/agent/log/search
+Content-Type: application/json
+
+{
+  "queryFilter": {
+    "tenant_id": "tenant_001"
+  },
+  "current": 1,
+  "pageSize": 10
+}
+
+### 5. 搜索智能体日志 - 按用户查询
+POST {{baseUrl}}/api/agent/log/search
+Content-Type: application/json
+
+{
+  "queryFilter": {
+    "tenant_id": "tenant_001",
+    "user_uid": "user_123"
+  },
+  "current": 1,
+  "pageSize": 20
+}
+
+### 6. 搜索智能体日志 - 按会话查询
+POST {{baseUrl}}/api/agent/log/search
+Content-Type: application/json
+
+{
+  "queryFilter": {
+    "tenant_id": "tenant_001",
+    "conversation_id": "session_001"
+  },
+  "current": 1,
+  "pageSize": 10
+}
+
+### 7. 搜索智能体日志 - 全文搜索
+POST {{baseUrl}}/api/agent/log/search
+Content-Type: application/json
+
+{
+  "queryFilter": {
+    "tenant_id": "tenant_001",
+    "user_input": "机器学习"
+  },
+  "current": 1,
+  "pageSize": 10
+}
+
+### 8. 搜索智能体日志 - 时间范围查询
+POST {{baseUrl}}/api/agent/log/search
+Content-Type: application/json
+
+{
+  "queryFilter": {
+    "tenant_id": "tenant_001",
+    "start_time": "2024-01-15T10:30:00Z",
+    "end_time": "2024-01-15T10:31:00Z"
+  },
+  "current": 1,
+  "pageSize": 10
+}
+
+### 9. 搜索智能体日志 - 带排序
+POST {{baseUrl}}/api/agent/log/search
+Content-Type: application/json
+
+{
+  "queryFilter": {
+    "tenant_id": "tenant_001"
+  },
+  "current": 1,
+  "pageSize": 10,
+  "orders": [
+    {
+      "column": "request_start_time",
+      "asc": true
+    }
+  ]
+}
+
+### 10. 搜索智能体日志 - 复合查询
+POST {{baseUrl}}/api/agent/log/search
+Content-Type: application/json
+
+{
+  "queryFilter": {
+    "tenant_id": "tenant_001",
+    "user_uid": "user_123",
+    "space_id": ["space_001", "space_002"],
+    "start_time": "2024-01-15T10:00:00Z",
+    "end_time": "2024-01-15T11:00:00Z"
+  },
+  "current": 1,
+  "pageSize": 5,
+  "orders": [
+    {
+      "column": "request_start_time",
+      "asc": false
+    }
+  ]
+}
+
+### =================
+### 测试错误场景
+### =================
+
+### 搜索智能体日志 - 缺少必需参数（tenant_id）
+POST {{baseUrl}}/api/agent/log/search
+Content-Type: application/json
+
+{
+  "queryFilter": {
+    "user_uid": "user_123"
+  },
+  "current": 1,
+  "pageSize": 10
+}
+
+### 新增智能体日志 - 缺少必需字段
+POST {{baseUrl}}/api/agent/log/add
+Content-Type: application/json
+
+{
+  "request_id": "req_004",
+  "user_input": "测试输入"
+}
+
+### =================
+### 性能测试
+### =================
+
+### 大分页查询
+POST {{baseUrl}}/api/agent/log/search
+Content-Type: application/json
+
+{
+  "queryFilter": {
+    "tenant_id": "tenant_001"
+  },
+  "current": 1,
+  "pageSize": 100
+}
+
+### 复杂排序查询
+POST {{baseUrl}}/api/agent/log/search
+Content-Type: application/json
+
+{
+  "queryFilter": {
+    "tenant_id": "tenant_001"
+  },
+  "current": 1,
+  "pageSize": 50,
+  "orders": [
+    {
+      "column": "request_start_time",
+      "asc": false
+    },
+    {
+      "column": "status",
+      "asc": true
+    }
+  ]
+}
+
+### 测试智能体日志搜索 - 使用支持排序的字段
+POST {{baseUrl}}/api/agent/log/search
+Content-Type: application/json
+
+{
+  "current": 1,
+  "pageSize": 10,
+  "queryFilter": {
+    "tenant_id": "tenant_001"
+  },
+  "orders": [
+    {
+      "column": "request_start_time",
+      "asc": false
+    },
+    {
+      "column": "elapsed_time_ms", 
+      "asc": true
+    }
+  ]
+}
+
+### 测试智能体日志搜索 - 按创建时间排序
+POST {{baseUrl}}/api/agent/log/search
+Content-Type: application/json
+
+{
+  "current": 1,
+  "pageSize": 10,
+  "queryFilter": {
+    "tenant_id": "tenant_001"
+  },
+  "orders": [
+    {
+      "column": "created_at",
+      "asc": false
+    }
+  ]
+}
+
+### 测试智能体日志搜索 - 按输入输出token排序
+POST {{baseUrl}}/api/agent/log/search
+Content-Type: application/json
+
+{
+  "current": 1,
+  "pageSize": 10,
+  "queryFilter": {
+    "tenant_id": "tenant_001"
+  },
+  "orders": [
+    {
+      "column": "input_token",
+      "asc": false
+    },
+    {
+      "column": "output_token",
+      "asc": false
+    }
+  ]
+}
+
+### 测试智能体日志搜索 - 混合有效和无效排序字段（应过滤无效字段）
+POST {{baseUrl}}/api/agent/log/search
+Content-Type: application/json
+
+{
+  "current": 1,
+  "pageSize": 10,
+  "queryFilter": {
+    "tenant_id": "tenant_001"
+  },
+  "orders": [
+    {
+      "column": "request_id",
+      "asc": false
+    },
+    {
+      "column": "request_start_time",
+      "asc": false
+    }
+  ]
+} 

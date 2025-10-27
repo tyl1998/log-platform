@@ -1,0 +1,34 @@
+---
+description: 整体项目结构
+globs: 
+alwaysApply: false
+---
+# 日志平台项目结构
+
+这是一个基于Rust的日志平台应用，使用axum作为Web框架，与QuickWit集成作为全文检索和存储后端。
+
+## 核心文件
+
+- [src/main.rs](mdc:src/main.rs) - 应用程序入口点，初始化配置、服务和HTTP服务器
+- [src/lib.rs](mdc:src/lib.rs) - 库入口点，导出所有模块
+
+## 主要模块
+
+- **配置**: [src/config/mod.rs](mdc:src/config/mod.rs) - 管理服务器和QuickWit配置
+- **错误处理**: [src/my_error/mod.rs](mdc:src/my_error/mod.rs) - 定义各类错误及其处理方式
+- **数据模型**: 
+  - [src/models/log.rs](mdc:src/models/log.rs) - 通用日志实体和查询结构定义
+  - [src/models/agent_logs_model.rs](mdc:src/models/agent_logs_model.rs) - 智能体日志实体和查询结构定义
+- **QuickWit服务**: 
+  - [src/services/quickwit.rs](mdc:src/services/quickwit.rs) - 与QuickWit API交互，处理通用日志功能
+  - [src/services/agent_log_quickwit.rs](mdc:src/services/agent_log_quickwit.rs) - 处理智能体日志的专用服务，支持租户隔离
+- **索引定义**:
+  - [src/index_define/agent_index_define.rs](mdc:src/index_define/agent_index_define.rs) - 智能体日志的QuickWit索引定义
+- **API路由**: [src/api/routes.rs](mdc:src/api/routes.rs) - 定义HTTP路由
+- **日志处理API**: [src/api/logs.rs](mdc:src/api/logs.rs) - 日志操作的API实现
+
+## 测试
+
+- **测试工具**: [src/tests/test_utils.rs](mdc:src/tests/test_utils.rs) - 测试辅助函数和模拟实现
+- **API测试**: [src/tests/log_api.rs](mdc:src/tests/log_api.rs) - API功能测试
+- **QuickWit集成测试**: [src/tests/quickwit_integration.rs](mdc:src/tests/quickwit_integration.rs) - 与QuickWit集成的测试

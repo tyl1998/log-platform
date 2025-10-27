@@ -1,0 +1,26 @@
+# 版本控制
+.git/
+.gitignore
+
+# Rust构建目录
+/target/
+
+# 测试文件
+**/*test*
+**/*spec*
+
+# 文档
+*.md
+LICENSE
+docs/
+
+# IDE配置
+.vscode/
+.idea/
+*.sublime-*
+*.swp
+*.swo
+
+# 其他
+.DS_Store
+*.log 
