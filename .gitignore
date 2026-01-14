@@ -3,3 +3,6 @@
 .idea
 .vscode
 logs
+temp
+
+quickwit-data

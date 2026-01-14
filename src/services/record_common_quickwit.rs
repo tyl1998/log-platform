@@ -1,9 +1,8 @@
 use crate::{
     AppStates,
-    config::QuickwitConfig,
     index_define::{DEFAULT_RECORD_COMMON_LOG_INDEX, get_record_common_log_index_config},
     models::{
-        LogEntry, LogLevel, LogQuery, LogSearchResult, ServiceDependency, ServiceStats, TraceQuery,
+        LogEntry, LogLevel, LogQuery, LogSearchResult, ServiceDependency, ServiceStats,
     },
     my_error::AppError,
 };
@@ -220,8 +219,11 @@ impl RecordCommonLogQuickwitService {
                 "{}/api/v1/indexes/{}/ingest?commit=force",
                 self.app_states.config.url, self.index_name
             ))
-            .header("Content-Type", "application/json")
-            .json(log)
+            .header("Content-Type", "application/x-ndjson")
+            .body(format!(
+                "{}\n",
+                serde_json::to_string(log).unwrap_or_default()
+            ))
             .send()
             .await?;
 
@@ -265,8 +267,7 @@ impl RecordCommonLogQuickwitService {
                 "{}/api/v1/indexes/{}/ingest?commit=force",
                 self.app_states.config.url, self.index_name
             ))
-            // QuickWit API接受application/json和application/x-ndjson格式
-            .header("Content-Type", "application/json")
+            .header("Content-Type", "application/x-ndjson")
             .body(ndjson)
             .send()
             .await?;
@@ -398,15 +399,13 @@ impl RecordCommonLogQuickwitService {
                     max_hits: Some(1),
                 };
 
-                if let Ok(parent_result) = self.search_logs(&parent_query).await {
-                    if let Some(parent_log) = parent_result.hits.first() {
-                        if let Some(parent_service) = &parent_log.service {
+                if let Ok(parent_result) = self.search_logs(&parent_query).await
+                    && let Some(parent_log) = parent_result.hits.first()
+                        && let Some(parent_service) = &parent_log.service {
                             // 增加依赖计数
                             let key = (parent_service.clone(), service.clone());
                             *dependencies.entry(key).or_insert(0) += 1;
                         }
-                    }
-                }
             }
         }
 
@@ -508,15 +507,14 @@ impl RecordCommonLogQuickwitService {
 
         for span in &spans {
             // 处理process信息
-            if let Some(service) = &span.service {
-                if !processes.contains_key(service) {
+            if let Some(service) = &span.service
+                && !processes.contains_key(service) {
                     let process_info = json!({
                         "serviceName": service,
                         "tags": []
                     });
                     processes.insert(service.clone(), process_info);
                 }
-            }
 
             // 转换span信息
             let span_json = json!({
@@ -529,7 +527,7 @@ impl RecordCommonLogQuickwitService {
                         "traceID": span.trace_id.clone().unwrap_or_else(|| trace_id.to_string()),
                         "spanID": parent_id
                     })]
-                }).unwrap_or_else(|| Vec::new()),
+                }).unwrap_or_else(Vec::new),
                 "startTime": span.timestamp.timestamp_micros(),
                 "duration": span.duration_ms.unwrap_or(0) * 1000, // 转为微秒
                 "tags": span.tags.clone().unwrap_or_else(|| json!({})),

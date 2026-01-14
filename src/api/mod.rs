@@ -1,4 +1,6 @@
 pub mod agent_logs;
+pub mod docs;
+pub mod knowledge_logs;
 pub mod record_common_logs;
 pub mod routes;
 

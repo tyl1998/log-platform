@@ -1,150 +1,240 @@
-# 日志平台
+# Log Platform
 
-一个基于Rust的轻量级日志平台，使用QuickWit作为全文检索引擎。
+A lightweight log platform built with Rust, using QuickWit as the full-text search engine.
 
-## 功能特点
+[中文文档](./README.zh-CN.md) | [English](./README.md)
 
-- 提供REST接口用于日志写入和查询
-- 支持单条日志和批量日志写入
-- 支持全文检索日志内容
-- 支持按时间范围、日志级别等过滤
-- 使用QuickWit作为后端存储和搜索引擎
-- 灵活的配置系统，支持多种配置加载方式
+## Features
 
-## 快速开始
+- **Agent Log Management**: Store, search, and manage AI agent interaction logs
+- **Knowledge Base**: Full-text search and segment management for knowledge documents
+- **Common Log API**: Universal log ingestion and search capabilities
+- **REST API**: Simple and intuitive RESTful interface
+- **Full-text Search**: Powered by QuickWit for efficient log searching
+- **Flexible Configuration**: Multiple configuration loading methods
+- **High Performance**: Built with Rust for optimal performance
 
-### 前提条件
+## Quick Start
+
+### Prerequisites
 
 - Rust 1.70+
-- Docker (可选，用于容器化部署)
-- 运行中的QuickWit实例 (默认连接到 `http://127.0.0.1:7280`)
+- Docker and Docker Compose (recommended)
+- Make (optional, for simplified commands)
 
-### 本地开发
+### Option 1: Using Docker (Recommended)
 
-1. 克隆仓库
+The simplest way to start all services:
 
 ```bash
-git clone https://github.com/yourusername/log_platform.git
-cd log_platform
+# Start all services (application + Quickwit)
+make run
 ```
 
-2. 构建和运行
+Access URLs:
+- **Application**: http://localhost:8098
+- **Swagger UI**: http://localhost:8098/swagger-ui
+- **OpenAPI JSON**: http://localhost:8098/api-docs/openapi.json
+- **Quickwit UI**: http://localhost:7280
+
+View logs:
+```bash
+make logs
+```
+
+Stop services:
+```bash
+make stop
+```
+
+### Option 2: Local Development
+
+1. Clone the repository
+
+```bash
+git clone https://github.com/nuwax-ai/log-platform.git
+cd log-platform
+```
+
+2. Start Quickwit (using Docker)
+
+```bash
+make dev
+```
+
+3. Run the application
 
 ```bash
 cargo run
 ```
 
-应用默认在 `http://127.0.0.1:3000` 上启动。
+The application starts on `http://127.0.0.1:8098` by default.
 
-### 配置系统
+### Configuration
 
-项目支持多种方式加载配置，按以下优先级顺序：
+The project supports multiple configuration loading methods, in the following priority order:
 
-1. 环境变量 `LOG_PLATFORM_CONFIG` 指定的配置文件
-2. 容器路径 `/app/config.yml`
-3. 当前目录下的 `config.yml`
-4. 默认内置配置
+1. Environment variable `LOG_PLATFORM_CONFIG` - specify a custom config file path
+2. Container path `/app/config.yml` - for Docker environments
+3. Current directory `config.yml` - for local development
+4. Built-in default configuration
 
-配置文件使用YAML格式，示例如下：
+Configuration file format (YAML):
 
 ```yaml
 server:
-  host: 127.0.0.1
-  port: 3000
+  port: 8098
+  log_path: logs
 
 quickwit:
   url: http://127.0.0.1:7280
-  default_index: logs
 ```
 
-使用环境变量指定配置文件：
+Specify configuration file via environment variable:
 
 ```bash
 LOG_PLATFORM_CONFIG=/path/to/config.yml cargo run
 ```
 
-### Docker部署
+## API Documentation
 
-1. 构建Docker镜像
+### Swagger UI
 
-```bash
-docker build -t log_platform:latest .
-```
+After starting the service, access the interactive API documentation:
 
-2. 运行容器
+**http://localhost:8098/swagger-ui**
 
-```bash
-docker run -p 3000:3000 -e QUICKWIT_URL=http://host.docker.internal:7280 -v $(pwd)/config.yml:/app/config.yml log_platform:latest
-```
+### API Overview
 
-也可以通过环境变量指定配置文件路径：
+#### Health Check
 
 ```bash
-docker run -p 3000:3000 -e LOG_PLATFORM_CONFIG=/path/to/config.yml -v $(pwd)/config.yml:/path/to/config.yml log_platform:latest
-```
-
-## API接口
-
-### 健康检查
-
-```
 GET /health
+GET /ready
 ```
 
-返回HTTP 200表示服务运行正常。
+#### Agent Log APIs
 
-### 写入单条日志
+Manage AI agent interaction logs:
 
+```bash
+# Create index
+GET /api/agent/log/createIndex
+
+# Add single log
+POST /api/agent/log/add
+
+# Batch add logs
+POST /api/agent/log/batch
+
+# Search logs
+POST /api/agent/log/search
+
+# Query log detail
+POST /api/agent/log/detail
+
+# Delete index
+DELETE /api/agent/log/delete/{index_name}
 ```
+
+#### Knowledge Base APIs
+
+Manage knowledge documents:
+
+```bash
+# Create index
+GET /api/knowledge/createIndex
+
+# Search knowledge
+POST /api/knowledge/search
+
+# Push segments
+POST /api/knowledge/push
+
+# Update segment
+POST /api/knowledge/update
+
+# Delete segments
+POST /api/knowledge/delete
+POST /api/knowledge/delete-async
+
+# Clear all segments
+POST /api/knowledge/clear
+
+# Get statistics
+POST /api/knowledge/stats
+
+# Query segment IDs
+POST /api/knowledge/segment-ids
+
+# Delete task management
+GET /api/knowledge/delete-tasks
+GET /api/knowledge/delete-tasks/{task_id}
+GET /api/knowledge/delete-tasks/{task_id}/status
+```
+
+#### Common Log APIs
+
+Universal log operations:
+
+```bash
+# Ingest single log
 POST /api/logs
-Content-Type: application/json
 
-{
-  "timestamp": "2023-07-01T12:00:00Z",
-  "level": "info",
-  "message": "这是一条测试日志",
-  "service": "api-service",
-  "trace_id": "abc123",
-  "metadata": {
-    "user_id": "user123",
-    "request_id": "req456"
-  }
-}
-```
-
-### 批量写入日志
-
-```
+# Batch ingest logs
 POST /api/logs/batch
-Content-Type: application/json
 
-[
-  {
-    "timestamp": "2023-07-01T12:00:00Z",
-    "level": "info",
-    "message": "日志消息1"
-  },
-  {
-    "timestamp": "2023-07-01T12:01:00Z",
-    "level": "error",
-    "message": "错误消息"
-  }
-]
+# Search logs
+GET /api/logs/search
 ```
 
-### 搜索日志
+## Development
+
+### Project Structure
 
 ```
-GET /api/logs/search?query=错误&start_time=2023-07-01T00:00:00Z&end_time=2023-07-02T00:00:00Z&limit=10
+log-platform/
+├── src/
+│   ├── api/           # API handlers
+│   ├── config/        # Configuration management
+│   ├── index_define/  # QuickWit index definitions
+│   ├── migration/     # Data migration
+│   ├── models/        # Data models
+│   ├── services/      # Business logic
+│   ├── storage/       # Storage layer
+│   └── middlewares/   # HTTP middlewares
+├── docker/            # Docker configuration
+├── config.yml         # Configuration file
+└── Makefile           # Build commands
 ```
 
-参数说明：
-- `query`: 搜索关键词，支持QuickWit查询语法（可选，默认为*匹配所有）
-- `start_time`: 开始时间，ISO8601格式（可选）
-- `end_time`: 结束时间，ISO8601格式（可选）
-- `offset`: 分页偏移量（可选，默认为0）
-- `limit`: 返回结果数量限制（可选，默认为20）
+### Running Tests
 
-## 许可证
+```bash
+cargo test
+```
 
-MIT
+### Code Formatting
+
+```bash
+cargo fmt
+```
+
+### Linting
+
+```bash
+cargo clippy
+```
+
+## License
+
+This project is dual-licensed under either:
+
+- **MIT License** - see [LICENSE-MIT](LICENSE-MIT) for details
+- **Apache License 2.0** - see [LICENSE-APACHE](LICENSE-APACHE) for details
+
+You may choose to use this project under either license.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.

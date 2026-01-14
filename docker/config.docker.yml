@@ -1,0 +1,6 @@
+server:
+  port: 8098
+  log_path: logs
+
+quickwit:
+  url: http://quickwit:7280

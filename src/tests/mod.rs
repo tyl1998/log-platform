@@ -29,6 +29,9 @@ pub mod tests {
 pub mod agent_logs_api_tests;
 
 #[cfg(test)]
+pub mod knowledge_logs_api_tests;
+
+#[cfg(test)]
 pub mod route_tests;
 
 #[cfg(test)]

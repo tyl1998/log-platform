@@ -248,6 +248,7 @@ fn create_unique_test_log() -> AgentLogEntry {
         updated_at: None,
         user_id: Some(1),
         user_name: Some("张三".to_string()),
+        biz_type: Some("agent".to_string()),
     }
 }
 

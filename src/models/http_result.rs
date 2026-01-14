@@ -7,7 +7,7 @@ use serde::Serialize;
 use uuid::Uuid;
 
 /// 通用HTTP响应结构
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, utoipa::ToSchema)]
 pub struct HttpResult<T> {
     // "0000" 表示成功,其他都是失败
     pub code: String,

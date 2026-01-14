@@ -1,0 +1,49 @@
+services:
+  # Quickwit 搜索引擎服务
+  quickwit:
+    image: quickwit/quickwit:latest
+    container_name: log-platform-quickwit
+    ports:
+      - "7280:7280"  # REST API
+      - "7281:7281"  # gRPC
+    volumes:
+      - ../quickwit-data:/quickwit/qwdata
+    environment:
+      - QW_ENABLE_JAEGER_ENDPOINT=true
+    command: run
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7280/health/livez"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - log-platform-network
+
+  # 日志平台服务
+  log-platform:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: log-platform-app
+    ports:
+      - "8098:8098"
+    volumes:
+      - ./config.docker.yml:/app/config.yml:ro  # 挂载 Docker 环境配置
+      - ../logs:/app/logs
+    environment:
+      - RUST_LOG=info
+      - RUST_BACKTRACE=1
+    depends_on:
+      quickwit:
+        condition: service_healthy
+    networks:
+      - log-platform-network
+    restart: unless-stopped
+
+volumes:
+  quickwit-data:
+    driver: local
+
+networks:
+  log-platform-network:
+    driver: bridge

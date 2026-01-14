@@ -10,6 +10,17 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 /// 处理单条日志写入
+#[utoipa::path(
+    post,
+    path = "/api/logs/ingest",
+    tag = "通用日志",
+    request_body = LogEntry,
+    responses(
+        (status = 200, description = "日志写入成功"),
+        (status = 400, description = "请求参数错误"),
+        (status = 500, description = "日志写入失败")
+    )
+)]
 pub async fn ingest_log(
     State(service): State<Arc<AppStates>>,
     Json(log): Json<LogEntry>,
@@ -21,6 +32,17 @@ pub async fn ingest_log(
 }
 
 /// 处理批量日志写入
+#[utoipa::path(
+    post,
+    path = "/api/logs/batchIngest",
+    tag = "通用日志",
+    request_body = Vec<LogEntry>,
+    responses(
+        (status = 200, description = "批量日志写入成功"),
+        (status = 400, description = "请求参数错误"),
+        (status = 500, description = "批量日志写入失败")
+    )
+)]
 pub async fn batch_ingest_logs(
     State(service): State<Arc<AppStates>>,
     Json(logs): Json<Vec<LogEntry>>,
@@ -44,6 +66,22 @@ pub struct SearchParams {
 }
 
 /// 处理日志搜索
+#[utoipa::path(
+    get,
+    path = "/api/logs/search",
+    tag = "通用日志",
+    params(
+        ("query" = Option<String>, Query, description = "搜索关键词"),
+        ("start_time" = Option<String>, Query, description = "开始时间"),
+        ("end_time" = Option<String>, Query, description = "结束时间"),
+        ("offset" = Option<i64>, Query, description = "偏移量"),
+        ("limit" = Option<i64>, Query, description = "返回数量")
+    ),
+    responses(
+        (status = 200, description = "搜索成功"),
+        (status = 500, description = "搜索失败")
+    )
+)]
 pub async fn search_logs(
     State(service): State<Arc<AppStates>>,
     Query(params): Query<SearchParams>,
@@ -62,6 +100,14 @@ pub async fn search_logs(
 }
 
 /// 健康检查
+#[utoipa::path(
+    get,
+    path = "/health",
+    tag = "健康检查",
+    responses(
+        (status = 200, description = "服务健康")
+    )
+)]
 pub async fn health_check() -> impl IntoResponse {
     HttpResult::<()>::success()
 }

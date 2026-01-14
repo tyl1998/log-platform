@@ -34,14 +34,13 @@ impl Config {
     pub fn load_config() -> Result<Self> {
         // 先检查环境变量
         let env_path = env::var("LOG_PLATFORM_CONFIG").ok();
-        if let Some(path) = &env_path {
-            if let Ok(file) = fs::File::open(path) {
+        if let Some(path) = &env_path
+            && let Ok(file) = fs::File::open(path) {
                 return match serde_yaml::from_reader(file) {
                     Ok(config) => Ok(config),
                     Err(e) => Err(anyhow::anyhow!("从环境变量指定的配置文件加载失败: {}", e)),
                 };
             }
-        }
 
         // 尝试从固定位置加载
         if let Ok(file) = fs::File::open("/app/config.yml") {

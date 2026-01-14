@@ -39,6 +39,7 @@ fn create_test_agent_log() -> AgentLogEntry {
         updated_at: None,
         user_id: Some(1),
         user_name: Some("张三".to_string()),
+        biz_type: Some("agent".to_string()),
     }
 }
 
@@ -134,6 +135,7 @@ async fn test_agent_batch_ingest_logs() {
             updated_at: None,
             user_id: Some(2),
             user_name: Some("李四".to_string()),
+            biz_type: Some("agent".to_string()),
         },
     ];
 
@@ -172,6 +174,7 @@ async fn test_agent_search_logs_basic() {
             end_time: None,
             tenant_id: Some("tenant_001".to_string()),
             space_id: None,
+            biz_type: None,
         }),
         orders: None,
     };
@@ -211,6 +214,7 @@ async fn test_agent_search_logs_with_filters() {
             end_time: Some("2024-01-15T11:00:00Z".parse::<DateTime<Utc>>().unwrap()),
             tenant_id: Some("tenant_001".to_string()),
             space_id: Some(vec!["space_001".to_string()]),
+            biz_type: None,
         }),
         orders: None,
     };

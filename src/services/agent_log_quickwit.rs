@@ -5,12 +5,21 @@ use crate::{
     my_error::AppError,
 };
 use anyhow::Result;
-use chrono;
-use log::{debug, info};
+use log::{debug, error, info};
 use serde_json::{Value, json};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
+
+/// 安全截取字符串（避免中文字符截断）
+fn truncate_string(s: &str, max_len: usize) -> String {
+    if s.len() <= max_len {
+        s.to_string()
+    } else {
+        // 安全截取：在字符边界处截断
+        s.chars().take(max_len).collect::<String>()
+    }
+}
 
 /// 智能体日志专用QuickWit服务
 /// 用于处理智能体日志的索引创建、日志写入和查询
@@ -35,6 +44,145 @@ impl AgentLogQuickwitService {
             app_states,
             index_name,
         }
+    }
+
+    /// 创建指定名称的索引（使用更新后的配置）
+    pub async fn create_named_index(&self, index_name: &str) -> Result<(), AppError> {
+        info!("创建智能体日志索引 {}", index_name);
+
+        let svc = Self::new_with_index_name(self.app_states.clone(), index_name.to_string());
+        if svc.check_agent_index_exists().await? {
+            return Ok(());
+        }
+
+        // 获取智能体索引配置（已包含biz_type字段）
+        let index_config = get_agent_index_config(index_name);
+
+        // 发送创建索引请求
+        let response = self
+            .app_states
+            .client
+            .post(format!("{}/api/v1/indexes", self.app_states.config.url))
+            .header("content-type", "application/json")
+            .json(&index_config)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "无法获取错误信息".to_string());
+            return Err(AppError::QuickWit(format!(
+                "创建智能体日志索引失败: {}",
+                error_text
+            )));
+        }
+
+        info!("智能体日志索引 {} 创建成功", index_name);
+
+        // 等待索引就绪
+        sleep(Duration::from_secs(2)).await;
+
+        Ok(())
+    }
+
+    /// 迁移数据从旧索引到新索引（支持断点续传）
+    ///
+    /// 注意：此方法会从源索引读取数据并写入目标索引，但不会删除源索引的数据
+    /// 迁移策略：每次都从第一页开始读取，因为 Quickwit 不支持删除单个文档
+    /// 迁移完成后，可以手动删除整个旧索引
+    pub async fn migrate_data_from_old_index(
+        &self,
+        old_index_name: &str,
+        new_index_name: &str,
+        batch_size: usize,
+    ) -> Result<(), AppError> {
+        info!(
+            "开始从索引 {} 迁移数据到索引 {}",
+            old_index_name, new_index_name
+        );
+
+        // 创建旧索引服务实例
+        let old_service =
+            Self::new_with_index_name(self.app_states.clone(), old_index_name.to_string());
+        // 创建新索引服务实例
+        let new_service =
+            Self::new_with_index_name(self.app_states.clone(), new_index_name.to_string());
+
+        let mut total_migrated: usize = 0;
+        let mut consecutive_empty_batches = 0;
+        let max_empty_batches = 3; // 连续3次空批次后停止
+
+        loop {
+            // 从旧索引批量读取数据（始终从第一页读取）
+            let search_params = PageQuery {
+                query_filter: Some(AgentLogSearchParams {
+                    request_id: None,
+                    message_id: None,
+                    conversation_id: None,
+                    agent_id: None,
+                    user_uid: None,
+                    user_input: None,
+                    output: None,
+                    start_time: None,
+                    end_time: None,
+                    tenant_id: None,
+                    space_id: None,
+                    biz_type: None,
+                }),
+                current: 1,
+                page_size: batch_size as i64,
+                orders: None,
+            };
+
+            let search_result = old_service.search_agent_logs(search_params).await?;
+
+            if search_result.records.is_empty() {
+                consecutive_empty_batches += 1;
+                if consecutive_empty_batches >= max_empty_batches {
+                    info!(
+                        "连续 {} 次获取空批次，数据迁移完成，共迁移 {} 条记录",
+                        max_empty_batches, total_migrated
+                    );
+                    break;
+                }
+                // 等待一下再重试
+                sleep(Duration::from_secs(1)).await;
+                continue;
+            }
+
+            // 重置空批次计数
+            consecutive_empty_batches = 0;
+
+            let batch_count = search_result.records.len();
+
+            // 将数据写入新索引
+            new_service
+                .batch_ingest_agent_logs(&search_result.records)
+                .await?;
+
+            total_migrated += batch_count;
+            info!(
+                "已迁移 {} 条记录（本批 {} 条）",
+                total_migrated, batch_count
+            );
+
+            // 等待数据写入完成
+            sleep(Duration::from_millis(500)).await;
+
+            // 如果这批数据少于批量大小，说明已经迁移完成
+            if batch_count < batch_size {
+                info!(
+                    "最后一批数据已迁移，数据迁移完成，共迁移 {} 条记录",
+                    total_migrated
+                );
+                break;
+            }
+        }
+
+        info!("数据迁移完成，总计迁移 {} 条记录", total_migrated);
+        Ok(())
     }
 
     /// 使用默认索引名称创建服务实例
@@ -193,8 +341,11 @@ impl AgentLogQuickwitService {
             .app_states
             .client
             .post(&url)
-            .header("content-type", "application/json")
-            .json(&log_with_timestamp)
+            .header("content-type", "application/x-ndjson")
+            .body(format!(
+                "{}\n",
+                serde_json::to_string(&log_with_timestamp).unwrap_or_default()
+            ))
             .send()
             .await?;
 
@@ -246,28 +397,53 @@ impl AgentLogQuickwitService {
             .collect::<Vec<String>>()
             .join("\n");
 
-        info!("发送批量摄取请求到: {}", url);
         info!(
-            "请求体前500字符: {}",
-            &ndjson[0..std::cmp::min(500, ndjson.len())]
+            "发送批量摄取请求到: {} (数据大小: {} 字节)",
+            url,
+            ndjson.len()
         );
+        info!("请求体前200字符: {}", truncate_string(&ndjson, 200));
 
-        let response = self
+        let start_time = std::time::Instant::now();
+
+        let response = match self
             .app_states
             .client
             .post(&url)
-            .header("content-type", "application/json")
+            .header("content-type", "application/x-ndjson")
             .body(ndjson)
             .send()
-            .await?;
+            .await
+        {
+            Ok(response) => {
+                let duration = start_time.elapsed();
+                info!("✅ QuickWit API 响应成功，耗时: {:?}", duration);
+                response
+            }
+            Err(e) => {
+                let duration = start_time.elapsed();
+                error!(
+                    "❌ QuickWit API 请求失败，耗时: {:?}, 错误: {}",
+                    duration, e
+                );
+                return Err(AppError::QuickWit(format!("批量摄取请求失败: {}", e)));
+            }
+        };
+
+        let duration = start_time.elapsed();
+        info!("总请求耗时: {:?}", duration);
 
         if !response.status().is_success() {
+            let status = response.status();
             let error_text = response.text().await.unwrap_or_default();
+            error!("❌ QuickWit API 错误响应: {} - {}", status, error_text);
             return Err(AppError::QuickWit(format!(
-                "批量摄取智能体日志失败: {}",
-                error_text
+                "批量摄取智能体日志失败: HTTP {} - {}",
+                status, error_text
             )));
         }
+
+        info!("✅ 批量摄取智能体日志成功完成");
 
         Ok(())
     }
@@ -311,8 +487,8 @@ impl AgentLogQuickwitService {
         });
 
         // 添加时间范围过滤（如果提供）
-        if let Some(ref filter) = params.query_filter {
-            if filter.start_time.is_some() || filter.end_time.is_some() {
+        if let Some(ref filter) = params.query_filter
+            && (filter.start_time.is_some() || filter.end_time.is_some()) {
                 if let Some(start_time) = filter.start_time {
                     search_request["start_timestamp"] = json!(start_time.timestamp());
                 }
@@ -321,20 +497,17 @@ impl AgentLogQuickwitService {
                     search_request["end_timestamp"] = json!(end_time.timestamp());
                 }
             }
-        }
 
         // 添加排序字段（如果提供）
         if let Some(orders) = &params.orders {
             if !orders.is_empty() {
                 // 定义可以用于排序的字段（必须是非text类型且fast为true的字段）
-                let sortable_fields = vec![
-                    "input_token",
+                let sortable_fields = ["input_token",
                     "output_token",
                     "request_start_time",
                     "request_end_time",
                     "elapsed_time_ms",
-                    "created_at",
-                ];
+                    "created_at"];
 
                 // 过滤掉不支持排序的字段
                 let valid_sort_fields: Vec<String> = orders

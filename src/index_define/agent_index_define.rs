@@ -5,7 +5,7 @@ use serde_json::json;
 /// 基于QuickWit索引规范创建的智能体日志索引配置
 pub fn get_agent_index_config(index_id: &str) -> serde_json::Value {
     json!({
-        "version": "0.8",
+        "version": "0.7",
         "index_id": index_id,
         "doc_mapping": {
             "mode": "dynamic",
@@ -170,9 +170,17 @@ pub fn get_agent_index_config(index_id: &str) -> serde_json::Value {
                     "tokenizer": "raw",
                     "stored": true,
                     "indexed": true
+                },
+                {
+                    "name": "biz_type",
+                    "type": "text",
+                    "tokenizer": "raw",
+                    "stored": true,
+                    "indexed": true,
+                    "fast": true
                 }
             ],
-            "tag_fields": ["tenant_id", "user_uid"],
+            "tag_fields": ["tenant_id", "user_uid", "biz_type"],
             "timestamp_field": "request_start_time",
             "store_source": false
         },
@@ -182,6 +190,9 @@ pub fn get_agent_index_config(index_id: &str) -> serde_json::Value {
         "retention": {
             "period": "90 days",
             "schedule": "daily"
+        },
+        "indexing_settings": {
+            "commit_timeout_secs": 3
         }
     })
 }

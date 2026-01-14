@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, utoipa::ToSchema)]
 pub struct LogEntry {
     pub id: Option<String>,
     pub timestamp: DateTime<Utc>,
@@ -31,21 +31,18 @@ pub struct LogEntry {
     pub tags: Option<serde_json::Value>, // 新增：标签，用于过滤和查询
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum LogLevel {
     Debug,
+    #[default]
     Info,
     Warn,
     Error,
     Fatal,
 }
 
-impl Default for LogLevel {
-    fn default() -> Self {
-        LogLevel::Info
-    }
-}
 
 impl Default for LogEntry {
     fn default() -> Self {
@@ -71,7 +68,7 @@ impl Default for LogEntry {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct LogQuery {
     pub query: String,
     pub start_timestamp: Option<i64>,
@@ -80,7 +77,7 @@ pub struct LogQuery {
     pub max_hits: Option<i64>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct LogSearchResult {
     pub hits: Vec<LogEntry>,
     pub total_hits: i64,

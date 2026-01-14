@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 /// 日志分页结果
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct PageQuery<T>
 where
     T: Serialize,
@@ -37,7 +37,7 @@ where
 }
 
 /// 排序字段定义
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct OrderItem {
     // 排序字段
     pub column: String,
@@ -46,9 +46,9 @@ pub struct OrderItem {
 }
 
 fn default_size() -> i64 {
-    return 10;
+    10
 }
 
 fn default_current() -> i64 {
-    return 1;
+    1
 }

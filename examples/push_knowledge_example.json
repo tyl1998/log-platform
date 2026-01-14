@@ -1,0 +1,34 @@
+{
+  "segments": [
+    {
+      "raw_id": "1001",
+      "kb_id": "kb_test_001",
+      "doc_id": "doc_001",
+      "raw_txt": "这是第一段知识库内容，包含了关于产品的基本介绍。",
+      "sort_index": 1,
+      "tenant_id": "tenant_001",
+      "space_id": "space_001",
+      "created": "2024-01-01T00:00:00Z"
+    },
+    {
+      "raw_id": "1002",
+      "kb_id": "kb_test_001",
+      "doc_id": "doc_001",
+      "raw_txt": "这是第二段知识库内容，详细说明了产品的使用方法。",
+      "sort_index": 2,
+      "tenant_id": "tenant_001",
+      "space_id": "space_001",
+      "created": "2024-01-01T00:00:00Z"
+    },
+    {
+      "raw_id": "1003",
+      "kb_id": "kb_test_001",
+      "doc_id": "doc_002",
+      "raw_txt": "这是第三段知识库内容，来自另一个文档。",
+      "sort_index": 1,
+      "tenant_id": "tenant_001",
+      "space_id": "space_001",
+      "created": "2024-01-01T00:00:00Z"
+    }
+  ]
+}

@@ -1,10 +1,9 @@
 use crate::impl_searchable_params;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 ///智能体调试大模型的日志结构定义
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct AgentLogEntry {
     /// 请求ID，唯一标识一次请求（必填）
     pub request_id: String,
@@ -50,10 +49,12 @@ pub struct AgentLogEntry {
     pub user_id: Option<i64>,
     /// 用户名
     pub user_name: Option<String>,
+    /// 业务类型，如:agent,mcp等，用于区分不同的业务日志类型
+    pub biz_type: Option<String>,
 }
 
 /// 日志搜索请求参数
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct AgentLogSearchParams {
     /// 请求ID
     pub request_id: Option<String>,
@@ -77,6 +78,8 @@ pub struct AgentLogSearchParams {
     pub tenant_id: Option<String>,
     /// 空间ID，可选，用于查询特定空间的日志，支持多个ID（OR关系）
     pub space_id: Option<Vec<String>>,
+    /// 业务类型，用于查询特定业务类型的日志，支持多个类型（OR关系）
+    pub biz_type: Option<Vec<String>>,
 }
 
 // 使用新设计的宏自动处理字段
@@ -85,13 +88,14 @@ impl_searchable_params!(
     string_fields: [request_id, message_id, conversation_id, agent_id, user_uid, tenant_id],
     array_fields: [
         space_id => " OR ",
+        biz_type => " OR ",
         user_input => " AND ",
         output => " AND "
     ]
 );
 
 /// 日志分页结果
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct AgentLogSearchResult {
     /// 处理耗时(毫秒)
     pub elapsed_time_ms: i64,

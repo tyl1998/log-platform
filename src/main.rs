@@ -3,9 +3,11 @@ mod config;
 mod index_define;
 mod macros;
 mod middlewares;
+mod migration;
 mod models;
 mod my_error;
 mod services;
+mod storage;
 
 #[cfg(test)]
 mod tests;
@@ -16,9 +18,10 @@ use std::time::Duration;
 use crate::my_error::AppError;
 use anyhow::Result;
 use config::Config;
-use log::info;
+use log::{error, info};
+use migration::AgentLogMigrationManager;
 use models::AppStates;
-use services::{AgentLogQuickwitService, RecordCommonLogQuickwitService};
+use services::{AgentLogQuickwitService, KnowledgeQuickwitService, RecordCommonLogQuickwitService};
 use tokio::net::TcpListener;
 use tokio::time::sleep;
 use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt, util::SubscriberInitExt};
@@ -89,7 +92,7 @@ async fn create_indexes_with_retry(app_states: Arc<AppStates>) {
     create_index_with_retry("通用日志索引", MAX_INDEX_CREATE_RETRIES, || async {
         let service = RecordCommonLogQuickwitService::new(app_states.clone());
         // 先检查索引是否存在
-        if !check_index_exists(&service.get_url(), &service.get_index_name()).await {
+        if !check_index_exists(service.get_url(), service.get_index_name()).await {
             info!("通用日志索引不存在，开始创建");
             service.create_index().await
         } else {
@@ -99,19 +102,64 @@ async fn create_indexes_with_retry(app_states: Arc<AppStates>) {
     })
     .await;
 
-    // 创建智能体日志索引
-    create_index_with_retry("智能体日志索引", MAX_INDEX_CREATE_RETRIES, || async {
-        let service = AgentLogQuickwitService::new(app_states.clone());
-        // 先检查索引是否存在
-        if !check_index_exists(&service.get_url(), &service.get_agent_index_name()).await {
-            info!("智能体日志索引不存在，开始创建");
-            service.create_agent_index().await
+    // 创建知识库索引（优先创建，因为不涉及数据迁移）
+    create_index_with_retry("知识库索引", MAX_INDEX_CREATE_RETRIES, || async {
+        let service = KnowledgeQuickwitService::new(app_states.clone());
+        let index_name = service.get_knowledge_index_name();
+
+        // 检查索引是否存在
+        if !check_index_exists(service.get_url(), index_name).await {
+            info!("知识库索引 {} 不存在，开始创建", index_name);
+            service.ensure_knowledge_index_exists().await
         } else {
-            info!("智能体日志索引已存在，无需创建");
+            info!("知识库索引 {} 已存在，无需创建", index_name);
             Ok(())
         }
     })
     .await;
+
+    // 创建智能体日志索引（不包含数据迁移）
+    create_index_with_retry("智能体日志索引", MAX_INDEX_CREATE_RETRIES, || async {
+        let service = AgentLogQuickwitService::new(app_states.clone());
+        let v2_index_name = service.get_agent_index_name();
+
+        // 检查新版本索引是否存在
+        if !check_index_exists(service.get_url(), v2_index_name).await {
+            info!("新版本智能体日志索引 {} 不存在，开始创建", v2_index_name);
+            service.create_agent_index().await
+        } else {
+            info!("新版本智能体日志索引 {} 已存在，无需创建", v2_index_name);
+            Ok(())
+        }
+    })
+    .await;
+
+    // 在独立的任务中处理数据迁移（避免阻塞服务启动）
+    let app_states_for_migration = app_states.clone();
+    tokio::spawn(async move {
+        info!("🔍 开始智能体日志数据迁移检查");
+
+        // 使用默认存储路径创建迁移管理器
+        let mut migration_manager =
+            match AgentLogMigrationManager::new_with_default_storage(app_states_for_migration) {
+                Ok(manager) => manager,
+                Err(e) => {
+                    error!("❌ 创建迁移管理器失败: {}", e);
+                    return;
+                }
+            };
+
+        // 直接调用 migrate，它内部会检查状态并决定是否需要迁移
+        match migration_manager.migrate().await {
+            Ok(_) => {
+                info!("✅ 数据迁移流程执行完成（可能已完成或无需迁移）");
+            }
+            Err(e) => {
+                error!("❌ 数据迁移执行失败: {}", e);
+                error!("💡 提示：可以稍后手动调用 /api/agent/log/migrateData 接口重试迁移");
+            }
+        }
+    });
 }
 
 /// 检查索引是否存在

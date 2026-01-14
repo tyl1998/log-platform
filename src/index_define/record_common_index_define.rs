@@ -3,7 +3,7 @@ use serde_json::json;
 /// 获取通用记录日志的索引定义
 pub fn get_record_common_log_index_config(index_name: &str) -> serde_json::Value {
     json!({
-        "version": "0.8",
+        "version": "0.7",
         "index_id": index_name,
         "doc_mapping": {
             "mode": "dynamic",
