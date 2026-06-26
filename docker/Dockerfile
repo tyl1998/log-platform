@@ -1,5 +1,5 @@
 # 构建阶段
-FROM rust:1.90-slim as builder
+FROM rust:1.90-slim AS builder
 
 WORKDIR /usr/src/app
 
@@ -15,7 +15,6 @@ COPY Cargo.toml Cargo.lock ./
 
 # 复制实际的源代码
 COPY src ./src
-COPY assets ./assets
 
 # 构建实际的应用（依赖已缓存，只编译项目代码）
 RUN cargo build --release
@@ -35,7 +34,7 @@ RUN apt-get update && \
 COPY --from=builder /usr/src/app/target/release/log_platform /app/
 
 # 复制配置文件（Docker 环境专用）
-COPY config.docker.yml /app/config.yml
+COPY docker/config.docker.yml /app/config.yml
 
 # 创建日志目录
 RUN mkdir -p /app/logs
@@ -45,11 +44,11 @@ ENV RUST_LOG=info
 ENV RUST_BACKTRACE=1
 
 # 暴露端口
-EXPOSE 8098
+EXPOSE 8097
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8098/health || exit 1
+    CMD curl -f http://localhost:8097/health || exit 1
 
 # 运行应用
 CMD ["./log_platform"] 

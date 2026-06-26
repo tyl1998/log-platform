@@ -1,6 +1,6 @@
 server:
-  port: 8098
-  log_path: logs
+  port: 8097
+  log_path: /app/logs
 
 quickwit:
-  url: http://quickwit:7280
+  url: http://host.docker.internal:7280
