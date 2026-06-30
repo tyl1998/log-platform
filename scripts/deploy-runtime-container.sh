@@ -7,8 +7,24 @@ CONTAINER_NAME="${CONTAINER_NAME:-nuwax-log-platform}"
 HOST_PORT="${HOST_PORT:-8097}"
 APP_PORT="${LOG_PLATFORM_PORT:-8097}"
 QUICKWIT_URL="${QUICKWIT_URL:-http://host.docker.internal:7280}"
-LOG_DIR="${LOG_DIR:-/Users/atan/Desktop/work/vs_code_nuwax/nuwax_deploy/docker/logs/log_platform}"
-DATA_DIR="${DATA_DIR:-/Users/atan/Desktop/work/vs_code_nuwax/nuwax_deploy/docker/data/log_platform}"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# DEPLOY_DIR 为 nuwax_deploy/docker 目录的宿主机绝对路径（可选）
+# 设置后日志和数据写入 DEPLOY_DIR 下，否则使用项目内 data 目录
+DEPLOY_DIR="${DEPLOY_DIR:-}"
+
+if [[ -n "${DEPLOY_DIR:-}" ]]; then
+  LOG_DIR_DEFAULT="${DEPLOY_DIR}/logs/log_platform"
+  DATA_DIR_DEFAULT="${DEPLOY_DIR}/data/log_platform"
+else
+  LOG_DIR_DEFAULT="${PROJECT_ROOT}/data/logs"
+  DATA_DIR_DEFAULT="${PROJECT_ROOT}/data"
+fi
+
+LOG_DIR="${LOG_DIR:-${LOG_DIR_DEFAULT}}"
+DATA_DIR="${DATA_DIR:-${DATA_DIR_DEFAULT}}"
 WAIT_TIMEOUT_SECONDS="${WAIT_TIMEOUT_SECONDS:-120}"
 PULL_IMAGE="${PULL_IMAGE:-false}"
 IMAGE="${IMAGE_NAME}:${IMAGE_TAG}"
