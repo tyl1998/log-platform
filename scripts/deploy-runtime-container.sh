@@ -23,6 +23,7 @@ docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
 
 docker run -d \
   --name "$CONTAINER_NAME" \
+  --add-host=host.docker.internal:host-gateway \
   --restart=always \
   -p "${HOST_PORT}:${APP_PORT}" \
   -e RUST_LOG="${RUST_LOG:-info}" \
