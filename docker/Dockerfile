@@ -1,11 +1,11 @@
 # 构建阶段
 FROM rust:1.90-slim AS builder
 
-# 配置 Rust crates.io 国内镜像（rsproxy.cn）
+# 配置 Rust crates.io 国内镜像（rsproxy.cn，使用 sparse 协议）
 ENV RUSTUP_DIST_SERVER=https://rsproxy.cn
 ENV RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup
 RUN mkdir -p "${CARGO_HOME:-/usr/local/cargo}" && \
-    printf '[source.crates-io]\nreplace-with = "rsproxy"\n\n[source.rsproxy]\nregistry = "https://rsproxy.cn/crates.io-index"\n\n[net]\ngit-fetch-with-cli = true\n' \
+    printf '[source.crates-io]\nreplace-with = "rsproxy"\n\n[source.rsproxy]\nregistry = "sparse+https://rsproxy.cn/index/"\n' \
       > "${CARGO_HOME:-/usr/local/cargo}/config.toml"
 
 WORKDIR /usr/src/app
