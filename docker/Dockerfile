@@ -3,6 +3,10 @@ FROM rust:1.90-slim AS builder
 
 WORKDIR /usr/src/app
 
+# 配置国内镜像源加速
+RUN sed -i 's|deb.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || \
+    sed -i 's|deb.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list 2>/dev/null || true
+
 # 安装构建依赖
 # 注意：utoipa-swagger-ui 需要 curl 来下载 Swagger UI 资源
 RUN apt-get update && \
@@ -24,6 +28,10 @@ RUN cargo build --release
 FROM debian:bookworm-slim
 
 WORKDIR /app
+
+# 配置国内镜像源加速（runtime 阶段）
+RUN sed -i 's|deb.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || \
+    sed -i 's|deb.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list 2>/dev/null || true
 
 # 安装运行时依赖
 RUN apt-get update && \
