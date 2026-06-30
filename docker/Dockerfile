@@ -2,10 +2,20 @@
 FROM rust:1.90-slim AS builder
 
 # 配置 Rust crates.io 国内镜像（rsproxy.cn）
-ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
-ENV CARGO_REGISTRIES_CRATES_IO_INDEX=sparse+https://rsproxy.cn/crates.io-index
 ENV RUSTUP_DIST_SERVER=https://rsproxy.cn
 ENV RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup
+RUN mkdir -p /root/.cargo && \
+    echo '[source.crates-io]' > /root/.cargo/config.toml && \
+    echo 'replace-with = "rsproxy"' >> /root/.cargo/config.toml && \
+    echo '' >> /root/.cargo/config.toml && \
+    echo '[source.rsproxy]' >> /root/.cargo/config.toml && \
+    echo 'registry = "sparse+https://rsproxy.cn/crates.io-index/"' >> /root/.cargo/config.toml && \
+    echo '' >> /root/.cargo/config.toml && \
+    echo '[registries.crates-io]' >> /root/.cargo/config.toml && \
+    echo 'protocol = "sparse"' >> /root/.cargo/config.toml && \
+    echo '' >> /root/.cargo/config.toml && \
+    echo '[net]' >> /root/.cargo/config.toml && \
+    echo 'git-fetch-with-cli = true' >> /root/.cargo/config.toml
 
 WORKDIR /usr/src/app
 
